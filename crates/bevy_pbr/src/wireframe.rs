@@ -5,7 +5,7 @@ use crate::{
 use bevy_app::{App, Plugin, PostUpdate, Startup, Update};
 use bevy_asset::{
     load_internal_asset, prelude::AssetChanged, weak_handle, AsAssetId, Asset, AssetApp,
-    AssetEvents, AssetId, Assets, Handle, UntypedAssetId,
+    AssetEventSystems, AssetId, Assets, Handle, UntypedAssetId,
 };
 use bevy_color::{Color, ColorToComponents};
 use bevy_core_pipeline::core_3d::{
@@ -49,7 +49,7 @@ use bevy_render::{
         ExtractedView, NoIndirectDrawing, RenderVisibilityRanges, RenderVisibleEntities,
         RetainedViewEntity, ViewDepthTexture, ViewTarget,
     },
-    Extract, Render, RenderApp, RenderDebugFlags, RenderSet,
+    Extract, Render, RenderApp, RenderDebugFlags, RenderSystems,
 };
 use bevy_render::{camera::extract_cameras, frame_graph::FrameGraph};
 use core::{hash::Hash, ops::Range};
@@ -114,7 +114,7 @@ impl Plugin for WireframePlugin {
         .add_systems(
             PostUpdate,
             check_wireframe_entities_needing_specialization
-                .after(AssetEvents)
+                .after(AssetEventSystems)
                 .run_if(resource_exists::<WireframeConfig>),
         );
 
@@ -150,11 +150,11 @@ impl Plugin for WireframePlugin {
                 Render,
                 (
                     specialize_wireframes
-                        .in_set(RenderSet::PrepareMeshes)
+                        .in_set(RenderSystems::PrepareMeshes)
                         .after(prepare_assets::<RenderWireframeMaterial>)
                         .after(prepare_assets::<RenderMesh>),
                     queue_wireframes
-                        .in_set(RenderSet::QueueMeshes)
+                        .in_set(RenderSystems::QueueMeshes)
                         .after(prepare_assets::<RenderWireframeMaterial>),
                 ),
             );

@@ -35,7 +35,7 @@ use bevy_render::{
     },
     renderer::{RenderAdapter, RenderDevice, RenderQueue},
     view::{ExtractedView, Msaa, ViewTarget, ViewUniformOffset},
-    Render, RenderApp, RenderSet,
+    Render, RenderApp, RenderSystems,
 };
 use bevy_render::{frame_graph::FrameGraph, render_graph::RenderGraph};
 use bevy_utils::{once, prelude::default};
@@ -195,10 +195,10 @@ impl Plugin for ScreenSpaceReflectionsPlugin {
 
         render_app
             .init_resource::<ScreenSpaceReflectionsBuffer>()
-            .add_systems(Render, prepare_ssr_pipelines.in_set(RenderSet::Prepare))
+            .add_systems(Render, prepare_ssr_pipelines.in_set(RenderSystems::Prepare))
             .add_systems(
                 Render,
-                prepare_ssr_settings.in_set(RenderSet::PrepareResources),
+                prepare_ssr_settings.in_set(RenderSystems::PrepareResources),
             )
             .add_render_graph_node::<ViewNodeRunner<ScreenSpaceReflectionsNode>>(
                 Core3d,

@@ -13,7 +13,7 @@ use bevy_render::{
     renderer::RenderDevice,
     texture::{CachedTexture, TextureCache},
     view::ViewTarget,
-    Render, RenderApp, RenderSet,
+    Render, RenderApp, RenderSystems,
 };
 
 use bevy_ecs::query::QueryItem;
@@ -38,7 +38,7 @@ impl Plugin for CopyDeferredLightingIdPlugin {
         };
         render_app.add_systems(
             Render,
-            (prepare_deferred_lighting_id_textures.in_set(RenderSet::PrepareResources),),
+            (prepare_deferred_lighting_id_textures.in_set(RenderSystems::PrepareResources),),
         );
     }
 

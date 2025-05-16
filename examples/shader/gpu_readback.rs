@@ -15,7 +15,7 @@ use bevy::{
         renderer::RenderDevice,
         storage::{GpuShaderStorageBuffer, ShaderStorageBuffer},
         texture::GpuImage,
-        Render, RenderApp, RenderSet,
+        Render, RenderApp, RenderSystems,
     },
 };
 use bevy_render::frame_graph::FrameGraph;
@@ -49,7 +49,7 @@ impl Plugin for GpuReadbackPlugin {
         render_app.init_resource::<ComputePipeline>().add_systems(
             Render,
             prepare_bind_group
-                .in_set(RenderSet::PrepareBindGroups)
+                .in_set(RenderSystems::PrepareBindGroups)
                 // We don't need to recreate the bind group every frame
                 .run_if(not(resource_exists::<GpuBufferBindGroup>)),
         );

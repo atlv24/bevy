@@ -57,7 +57,7 @@ use bevy_render::{
         prepare_view_targets, ExtractedView, Msaa, ViewDepthTexture, ViewTarget, ViewUniform,
         ViewUniformOffset, ViewUniforms,
     },
-    Extract, ExtractSchedule, Render, RenderApp, RenderSet,
+    Extract, ExtractSchedule, Render, RenderApp, RenderSystems,
 };
 use bevy_utils::{default, once};
 use tracing::{info, warn};
@@ -229,7 +229,7 @@ impl Plugin for DepthOfFieldPlugin {
                     prepare_auxiliary_depth_of_field_textures,
                 )
                     .after(prepare_view_targets)
-                    .in_set(RenderSet::ManageViews),
+                    .in_set(RenderSystems::ManageViews),
             )
             .add_systems(
                 Render,
@@ -238,7 +238,7 @@ impl Plugin for DepthOfFieldPlugin {
                     prepare_depth_of_field_pipelines,
                 )
                     .chain()
-                    .in_set(RenderSet::Prepare),
+                    .in_set(RenderSystems::Prepare),
             )
             .add_render_graph_node::<ViewNodeRunner<DepthOfFieldNode>>(Core3d, Node3d::DepthOfField)
             .add_render_graph_edges(

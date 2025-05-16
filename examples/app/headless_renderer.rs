@@ -3,7 +3,7 @@
 //! It follows this steps:
 //! 1. Render from camera to gpu-image render target
 //! 2. Copy from gpu image to buffer using `ImageCopyDriver` node in `RenderGraph`
-//! 3. Copy from buffer to channel using `receive_image_from_buffer` after `RenderSet::Render`
+//! 3. Copy from buffer to channel using `receive_image_from_buffer` after `RenderSystems::Render`
 //! 4. Save from channel to random named file using `scene::update` at `PostUpdate` in `MainWorld`
 //! 5. Exit if `single_image` setting is set
 
@@ -20,8 +20,8 @@ use bevy::{
             Buffer, BufferDescriptor, BufferUsages, Extent3d, Maintain, MapMode, TextureDimension,
             TextureFormat, TextureUsages,
         },
-        renderer::RenderDevice,
-        Extract, Render, RenderApp, RenderSet,
+        renderer::{RenderContext, RenderDevice, RenderQueue},
+        Extract, Render, RenderApp, RenderSet, RenderSystems,
     },
     winit::WinitPlugin,
 };
@@ -217,7 +217,10 @@ impl Plugin for ImageCopyPlugin {
             .add_systems(ExtractSchedule, image_copy_extract)
             // Receives image data from buffer to channel
             // so we need to run it after the render graph is done
-            .add_systems(Render, receive_image_from_buffer.after(RenderSet::Render));
+            .add_systems(
+                Render,
+                receive_image_from_buffer.after(RenderSystems::Render),
+            );
     }
 }
 

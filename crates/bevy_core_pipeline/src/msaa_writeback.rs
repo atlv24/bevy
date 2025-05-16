@@ -11,7 +11,7 @@ use bevy_render::{
     render_graph::{NodeRunError, RenderGraphApp, RenderGraphContext, ViewNode, ViewNodeRunner},
     render_resource::*,
     view::{Msaa, ViewTarget},
-    Render, RenderApp, RenderSet,
+    Render, RenderApp, RenderSystems,
 };
 
 /// This enables "msaa writeback" support for the `core_2d` and `core_3d` pipelines, which can be enabled on cameras
@@ -25,7 +25,7 @@ impl Plugin for MsaaWritebackPlugin {
         };
         render_app.add_systems(
             Render,
-            prepare_msaa_writeback_pipelines.in_set(RenderSet::Prepare),
+            prepare_msaa_writeback_pipelines.in_set(RenderSystems::Prepare),
         );
         {
             render_app
