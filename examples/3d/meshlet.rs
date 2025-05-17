@@ -7,7 +7,7 @@ mod camera_controller;
 
 use bevy::{
     pbr::{
-        experimental::meshlet::{MeshletMesh3d, MeshletPlugin},
+        experimental::meshlet::{MeshletMesh, MeshletMesh3d, MeshletPlugin},
         CascadeShadowConfigBuilder, DirectionalLightShadowMap,
     },
     prelude::*,
@@ -16,15 +16,7 @@ use bevy::{
 use camera_controller::{CameraController, CameraControllerPlugin};
 use std::{f32::consts::PI, path::Path, process::ExitCode};
 
-const ASSET_URL: &str =
-    "https://raw.githubusercontent.com/JMS55/bevy_meshlet_asset/7a7c14138021f63904b584d5f7b73b695c7f4bbf/bunny.meshlet_mesh";
-
 fn main() -> ExitCode {
-    if !Path::new("./assets/external/models/bunny.meshlet_mesh").exists() {
-        eprintln!("ERROR: Asset at path <bevy>/assets/external/models/bunny.meshlet_mesh is missing. Please download it from {ASSET_URL}");
-        return ExitCode::FAILURE;
-    }
-
     App::new()
         .insert_resource(DirectionalLightShadowMap { size: 4096 })
         .add_plugins((
@@ -47,6 +39,7 @@ fn setup(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut debug_materials: ResMut<Assets<MeshletDebugMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut meshlet_meshes: ResMut<Assets<MeshletMesh>>,
 ) {
     commands.spawn((
         Camera3d::default(),
@@ -76,11 +69,8 @@ fn setup(
         Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, PI * -0.15, PI * -0.15)),
     ));
 
-    // A custom file format storing a [`bevy_render::mesh::Mesh`]
-    // that has been converted to a [`bevy_pbr::meshlet::MeshletMesh`]
-    // using [`bevy_pbr::meshlet::MeshletMesh::from_mesh`], which is
-    // a function only available when the `meshlet_processor` cargo feature is enabled.
-    let meshlet_mesh_handle = asset_server.load("external/models/bunny.meshlet_mesh");
+    let meshlet_mesh_handle = meshlet_meshes
+        .add(MeshletMesh::from_mesh(&Sphere::new(1.0).mesh().ico(12).unwrap(), 3).unwrap());
     let debug_material = debug_materials.add(MeshletDebugMaterial::default());
 
     for x in -2..=2 {
@@ -100,7 +90,7 @@ fn setup(
             })),
             Transform::default()
                 .with_scale(Vec3::splat(0.2))
-                .with_translation(Vec3::new(x as f32 / 2.0, 0.0, -0.3)),
+                .with_translation(Vec3::new(x as f32 / 2.0, 0.1, -0.3)),
         ));
     }
     for x in -2..=2 {
@@ -110,7 +100,7 @@ fn setup(
             Transform::default()
                 .with_scale(Vec3::splat(0.2))
                 .with_rotation(Quat::from_rotation_y(PI))
-                .with_translation(Vec3::new(x as f32 / 2.0, 0.0, 0.3)),
+                .with_translation(Vec3::new(x as f32 / 2.0, 0.1, 0.3)),
         ));
     }
 

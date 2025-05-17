@@ -163,6 +163,8 @@ default = [
   "vorbis",
   "webgl2",
   "x11",
+  "meshlet",
+  "meshlet_processor",
 ]
 
 # Recommended defaults for no_std applications
