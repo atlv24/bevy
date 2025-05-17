@@ -51,7 +51,12 @@ fn setup(
             intensity: 150.0,
             ..default()
         },
-        CameraController::default(),
+        CameraController {
+            sensitivity: 0.2,
+            walk_speed: 1.0,
+            run_speed: 10.0,
+            ..default()
+        },
     ));
 
     commands.spawn((
@@ -70,7 +75,7 @@ fn setup(
     ));
 
     let meshlet_mesh_handle = meshlet_meshes
-        .add(MeshletMesh::from_mesh(&Sphere::new(1.0).mesh().ico(12).unwrap(), 3).unwrap());
+        .add(MeshletMesh::from_mesh(&Sphere::new(1.0).mesh().ico(32).unwrap(), 3).unwrap());
     let debug_material = debug_materials.add(MeshletDebugMaterial::default());
 
     for x in -2..=2 {

@@ -3,7 +3,6 @@ use crate::{
     material::DUMMY_MESH_MATERIAL, meshlet::asset::MeshletAabb, Material, MaterialBindingId,
     MeshFlags, MeshTransforms, MeshUniform, NotShadowCaster, NotShadowReceiver,
     PreviousGlobalTransform, RenderMaterialBindings, RenderMaterialInstances,
-    RenderMeshMaterialIds, StandardMaterial,
 };
 use bevy_asset::{AssetEvent, AssetServer, Assets, UntypedAssetId};
 use bevy_ecs::{
