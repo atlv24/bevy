@@ -14,7 +14,7 @@ use bevy::{
     render::render_resource::AsBindGroup,
 };
 use camera_controller::{CameraController, CameraControllerPlugin};
-use std::{f32::consts::PI, path::Path, process::ExitCode};
+use std::{f32::consts::PI, process::ExitCode};
 
 fn main() -> ExitCode {
     App::new()
