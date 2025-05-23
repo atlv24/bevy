@@ -343,6 +343,7 @@ impl AssetLoader for ShaderLoader {
     ) -> Result<Shader, Self::Error> {
         let ext = load_context.path().extension().unwrap().to_str().unwrap();
         let path = load_context.asset_path().to_string();
+        println!("ShaderLoader::load({})", path);
         // On windows, the path will inconsistently use \ or /.
         // TODO: remove this once AssetPath forces cross-platform "slash" consistency. See #10511
         let path = path.replace(std::path::MAIN_SEPARATOR, "/");
@@ -375,7 +376,9 @@ impl AssetLoader for ShaderLoader {
 
         // collect and store file dependencies
         for import in &shader.imports {
+            println!("try dependency load({:?})", import);
             if let ShaderImport::AssetPath(asset_path) = import {
+                println!("dependency load({})", asset_path);
                 shader.file_dependencies.push(load_context.load(asset_path));
             }
         }

@@ -35,7 +35,10 @@ use futures_lite::{FutureExt, StreamExt};
 use info::*;
 use loaders::*;
 use parking_lot::{RwLock, RwLockWriteGuard};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    println,
+};
 use thiserror::Error;
 use tracing::{error, info};
 
@@ -479,6 +482,7 @@ impl AssetServer {
             HandleLoadingMode::Request,
             meta_transform,
         );
+        println!("load_with_meta_transform({}, {})", path, should_load);
 
         if should_load {
             self.spawn_load_task(handle.clone().untyped(), path, infos, guard);
@@ -503,6 +507,7 @@ impl AssetServer {
             HandleLoadingMode::Request,
             meta_transform,
         );
+        println!("load_erased_with_meta_transform({}, {})", path, should_load);
 
         if should_load {
             self.spawn_load_task(handle.clone(), path, infos, guard);
@@ -518,6 +523,7 @@ impl AssetServer {
         infos: RwLockWriteGuard<AssetInfos>,
         guard: G,
     ) {
+        println!("spawn_load_task({}, {:?})", path, handle);
         // drop the lock on `AssetInfos` before spawning a task that may block on it in single-threaded
         #[cfg(any(target_arch = "wasm32", not(feature = "multi_threaded")))]
         drop(infos);
@@ -553,6 +559,7 @@ impl AssetServer {
         path: impl Into<AssetPath<'a>>,
     ) -> Result<UntypedHandle, AssetLoadError> {
         let path: AssetPath = path.into();
+        println!("load_untyped_async({})", path);
         self.load_internal(None, path, false, None).await
     }
 
@@ -653,7 +660,13 @@ impl AssetServer {
         meta_transform: Option<MetaTransform>,
     ) -> Result<UntypedHandle, AssetLoadError> {
         let asset_type_id = input_handle.as_ref().map(UntypedHandle::type_id);
-
+        println!(
+            "load_internal({}, {}, {}, {:?})",
+            path,
+            force,
+            meta_transform.is_some(),
+            input_handle,
+        );
         let path = path.into_owned();
         let path_clone = path.clone();
         let (mut meta, loader, mut reader) = self
@@ -780,10 +793,15 @@ impl AssetServer {
                     handle.unwrap()
                 };
 
+                println!("send_loaded_asset({}) {:?}", path, base_handle);
                 self.send_loaded_asset(base_handle.id(), loaded_asset);
                 Ok(final_handle)
             }
             Err(err) => {
+                println!(
+                    "send_asset_event(Failed {:?} {} {})",
+                    base_handle, err, path
+                );
                 self.send_asset_event(InternalAssetEvent::Failed {
                     id: base_handle.id(),
                     error: err.clone(),
@@ -808,6 +826,7 @@ impl AssetServer {
     pub fn reload<'a>(&self, path: impl Into<AssetPath<'a>>) {
         let server = self.clone();
         let path = path.into().into_owned();
+        println!("reload({})", path);
         IoTaskPool::get()
             .spawn(async move {
                 let mut reloaded = false;

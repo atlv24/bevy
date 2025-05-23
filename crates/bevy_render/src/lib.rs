@@ -123,14 +123,14 @@ use tracing::debug;
 macro_rules! load_shader_library {
     ($asset_server_provider: expr, $path: literal $(, $settings: expr)?) => {
         $crate::_macro::bevy_asset::embedded_asset!($asset_server_provider, $path);
-        let handle: $crate::_macro::bevy_asset::prelude::Handle<$crate::prelude::Shader> =
-            $crate::_macro::bevy_asset::load_embedded_asset!(
-                $asset_server_provider,
-                $path
-                $(,$settings)?
-            );
-        core::mem::forget(handle);
-    }
+        //let handle: $crate::_macro::bevy_asset::prelude::Handle<$crate::prelude::Shader> =
+        //    $crate::_macro::bevy_asset::load_embedded_asset!(
+        //        $asset_server_provider,
+        //        $path
+        //        $(,$settings)?
+        //    );
+        //core::mem::forget(handle);
+    };
 }
 
 /// Contains the default Bevy rendering backend based on wgpu.
