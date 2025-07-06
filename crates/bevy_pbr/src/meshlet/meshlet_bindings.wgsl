@@ -205,7 +205,7 @@ var<push_constant> constants: Constants;
 // TODO: Load only twice, instead of 3x in cases where you load 3 indices per thread?
 fn get_meshlet_vertex_id(index_id: u32) -> u32 {
     let packed_index = meshlet_indices[index_id / 4u];
-    let bit_offset = (index_id % 4u) * 8u;
+    let bit_offset = (index_id & 3u) * 8u;
     return extractBits(packed_index, bit_offset, 8u);
 }
 
@@ -257,7 +257,7 @@ fn get_meshlet_vertex_position(meshlet: ptr<function, Meshlet>, vertex_id: u32) 
 // TODO: Load only twice, instead of 3x in cases where you load 3 indices per thread?
 fn get_meshlet_vertex_id(index_id: u32) -> u32 {
     let packed_index = meshlet_indices[index_id / 4u];
-    let bit_offset = (index_id % 4u) * 8u;
+    let bit_offset = (index_id & 3u) * 8u;
     return extractBits(packed_index, bit_offset, 8u);
 }
 

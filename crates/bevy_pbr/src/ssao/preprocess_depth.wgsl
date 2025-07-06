@@ -65,7 +65,7 @@ fn preprocess_depth(@builtin(global_invocation_id) global_id: vec3<u32>, @builti
     workgroupBarrier();
 
     // MIP 2 - Weighted average of MIP 1's depth values (per invocation, 4x4 invocations per workgroup)
-    if all(local_id.xy % vec2<u32>(2u) == vec2<u32>(0u)) {
+    if all(local_id.xy & vec2<u32>(1u) == vec2<u32>(0u)) {
         let depth0 = previous_mip_depth[local_id.x + 0u][local_id.y + 0u];
         let depth1 = previous_mip_depth[local_id.x + 1u][local_id.y + 0u];
         let depth2 = previous_mip_depth[local_id.x + 0u][local_id.y + 1u];
@@ -78,7 +78,7 @@ fn preprocess_depth(@builtin(global_invocation_id) global_id: vec3<u32>, @builti
     workgroupBarrier();
 
     // MIP 3 - Weighted average of MIP 2's depth values (per invocation, 2x2 invocations per workgroup)
-    if all(local_id.xy % vec2<u32>(4u) == vec2<u32>(0u)) {
+    if all(local_id.xy & vec2<u32>(3u) == vec2<u32>(0u)) {
         let depth0 = previous_mip_depth[local_id.x + 0u][local_id.y + 0u];
         let depth1 = previous_mip_depth[local_id.x + 2u][local_id.y + 0u];
         let depth2 = previous_mip_depth[local_id.x + 0u][local_id.y + 2u];
@@ -91,7 +91,7 @@ fn preprocess_depth(@builtin(global_invocation_id) global_id: vec3<u32>, @builti
     workgroupBarrier();
 
     // MIP 4 - Weighted average of MIP 3's depth values (per invocation, 1 invocation per workgroup)
-    if all(local_id.xy % vec2<u32>(8u) == vec2<u32>(0u)) {
+    if all(local_id.xy & vec2<u32>(7u) == vec2<u32>(0u)) {
         let depth0 = previous_mip_depth[local_id.x + 0u][local_id.y + 0u];
         let depth1 = previous_mip_depth[local_id.x + 4u][local_id.y + 0u];
         let depth2 = previous_mip_depth[local_id.x + 0u][local_id.y + 4u];
