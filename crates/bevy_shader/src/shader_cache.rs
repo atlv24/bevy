@@ -546,6 +546,10 @@ fn get_capabilities(features: Features, downlevel: DownlevelFlags) -> Capabiliti
         Capabilities::RAY_HIT_VERTEX_POSITION,
         features.intersects(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
     );
+    capabilities.set(
+        Capabilities::SHADER_BARYCENTRICS,
+        features.intersects(Features::SHADER_BARYCENTRICS),
+    );
 
     capabilities
 }
