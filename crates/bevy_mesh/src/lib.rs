@@ -11,19 +11,18 @@ mod mesh;
 mod mikktspace;
 #[cfg(feature = "morph")]
 pub mod morph;
-pub mod primitives;
 pub mod skinning;
 mod vertex;
 use bevy_app::{App, Plugin, PostUpdate};
-use bevy_asset::{AssetApp, AssetEventSystems};
+use bevy_asset::{AssetApp, AssetEventSystems, RenderAssetUsages};
 use bevy_ecs::schedule::{IntoScheduleConfigs, SystemSet};
+use bevy_math::meshing::{MeshBuilder, Meshable};
 use bitflags::bitflags;
 pub use components::*;
 pub use index::*;
 pub use mesh::*;
 #[cfg(feature = "bevy_mikktspace")]
 pub use mikktspace::*;
-pub use primitives::*;
 pub use vertex::*;
 pub use wgpu_types::VertexFormat;
 
@@ -34,7 +33,7 @@ pub mod prelude {
     #[cfg(feature = "morph")]
     pub use crate::morph::MorphWeights;
     #[doc(hidden)]
-    pub use crate::{primitives::MeshBuilder, primitives::Meshable, Mesh, Mesh2d, Mesh3d};
+    pub use crate::{Mesh, Mesh2d, Mesh3d};
 }
 
 bitflags! {
@@ -93,3 +92,43 @@ impl BaseMeshPipelineKey {
 /// `bevy_render::mesh::inherit_weights` runs in this `SystemSet`
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
 pub struct InheritWeightSystems;
+
+impl<T: Meshable> From<T> for Mesh {
+    fn from(meshable: T) -> Mesh {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::all());
+        meshable.mesh(&mut mesh);
+        mesh
+    }
+}
+
+impl MeshBuilder for Mesh {
+    fn triangles<I: Iterator<Item = u32>, V: Iterator<Item = ([f32; 3], [f32; 3], [f32; 2])>>(
+        &mut self,
+        indices: I,
+        vertices: V,
+    ) {
+        let mut vs = Vec::new();
+        let mut vns = Vec::new();
+        let mut vts = Vec::new();
+        vertices.for_each(|(v, vn, vt)| {
+            vs.push(v);
+            vns.push(vn);
+            vts.push(vt);
+        });
+        *self = Mesh::new(PrimitiveTopology::TriangleList, self.asset_usage)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vs)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, vns)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, vts)
+            .with_inserted_indices(Indices::U32(indices.collect()));
+    }
+
+    fn lines<I: Iterator<Item = u32>, V: Iterator<Item = [f32; 3]>>(
+        &mut self,
+        indices: I,
+        vertices: V,
+    ) {
+        *self = Mesh::new(PrimitiveTopology::LineList, self.asset_usage)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices.collect::<Vec<_>>())
+            .with_inserted_indices(Indices::U32(indices.collect()));
+    }
+}

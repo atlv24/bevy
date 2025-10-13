@@ -1,12 +1,6 @@
-use core::f32::consts::FRAC_PI_2;
-use core::mem;
-
-use crate::{primitives::dim3::triangle3d, Indices, Mesh, PerimeterSegment, VertexAttributeValues};
-use bevy_asset::RenderAssetUsages;
-
 use super::{Extrudable, MeshBuilder, Meshable};
-use bevy_math::prelude::Polyline2d;
-use bevy_math::{
+use crate::prelude::Polyline2d;
+use crate::{
     ops,
     primitives::{
         Annulus, Capsule2d, Circle, CircularSector, CircularSegment, ConvexPolygon, Ellipse,
@@ -15,8 +9,10 @@ use bevy_math::{
     },
     FloatExt, Vec2, Vec3,
 };
+use alloc::vec;
 use bevy_reflect::prelude::*;
-use wgpu_types::PrimitiveTopology;
+use core::f32::consts::FRAC_PI_2;
+use core::mem;
 
 /// A builder used for creating a [`Mesh`] with a [`Circle`] shape.
 #[derive(Clone, Copy, Debug, Reflect)]
@@ -58,12 +54,14 @@ impl CircleMeshBuilder {
     }
 }
 
-impl MeshBuilder for CircleMeshBuilder {
-    fn build(&self) -> Mesh {
-        Ellipse::new(self.circle.radius, self.circle.radius)
-            .mesh()
-            .resolution(self.resolution)
-            .build()
+impl Meshable for CircleMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
+        EllipseMeshBuilder {
+            ellipse: Ellipse::new(self.circle.radius, self.circle.radius),
+            ..Default::default()
+        }
+        .resolution(self.resolution)
+        .mesh(builder)
     }
 }
 
@@ -174,8 +172,8 @@ impl CircularSectorMeshBuilder {
     }
 }
 
-impl MeshBuilder for CircularSectorMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for CircularSectorMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let resolution = self.resolution as usize;
         let mut indices = Vec::with_capacity((resolution - 1) * 3);
         let mut positions = Vec::with_capacity(resolution + 1);
@@ -312,8 +310,8 @@ impl CircularSegmentMeshBuilder {
     }
 }
 
-impl MeshBuilder for CircularSegmentMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for CircularSegmentMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let resolution = self.resolution as usize;
         let mut indices = Vec::with_capacity((resolution - 1) * 3);
         let mut positions = Vec::with_capacity(resolution + 1);
@@ -426,8 +424,8 @@ impl Meshable for ConvexPolygon {
     }
 }
 
-impl MeshBuilder for ConvexPolygonMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for ConvexPolygonMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let len = self.vertices.len();
         let mut indices = Vec::with_capacity((len - 2) * 3);
         let mut positions = Vec::with_capacity(len);
@@ -511,8 +509,8 @@ impl Meshable for RegularPolygon {
     }
 }
 
-impl MeshBuilder for RegularPolygonMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for RegularPolygonMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         // The ellipse mesh is just a regular polygon with two radii
         Ellipse::new(self.circumradius, self.circumradius)
             .mesh()
@@ -575,8 +573,8 @@ impl EllipseMeshBuilder {
     }
 }
 
-impl MeshBuilder for EllipseMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for EllipseMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let resolution = self.resolution as usize;
         let mut indices = Vec::with_capacity((resolution - 2) * 3);
         let mut positions = Vec::with_capacity(resolution);
@@ -654,8 +652,8 @@ impl Segment2dMeshBuilder {
     }
 }
 
-impl MeshBuilder for Segment2dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Segment2dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let positions = self.segment.vertices.map(|v| v.extend(0.0)).to_vec();
         let indices = Indices::U32(vec![0, 1]);
 
@@ -687,8 +685,8 @@ pub struct Polyline2dMeshBuilder {
     polyline: Polyline2d,
 }
 
-impl MeshBuilder for Polyline2dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Polyline2dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let positions: Vec<_> = self
             .polyline
             .vertices
@@ -763,8 +761,8 @@ impl AnnulusMeshBuilder {
     }
 }
 
-impl MeshBuilder for AnnulusMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for AnnulusMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let inner_radius = self.annulus.inner_circle.radius;
         let outer_radius = self.annulus.outer_circle.radius;
 
@@ -895,8 +893,8 @@ impl RhombusMeshBuilder {
     }
 }
 
-impl MeshBuilder for RhombusMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for RhombusMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let [hhd, vhd] = [self.half_diagonals.x, self.half_diagonals.y];
         let positions = vec![
             [hhd, 0.0, 0.0],
@@ -967,8 +965,8 @@ impl Meshable for Triangle2d {
     }
 }
 
-impl MeshBuilder for Triangle2dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Triangle2dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let vertices_3d = self.triangle.vertices.map(|v| v.extend(0.));
 
         let positions: Vec<_> = vertices_3d.into();
@@ -1052,8 +1050,8 @@ impl RectangleMeshBuilder {
     }
 }
 
-impl MeshBuilder for RectangleMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for RectangleMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let [hw, hh] = [self.half_size.x, self.half_size.y];
         let positions = vec![
             [hw, hh, 0.0],
@@ -1142,8 +1140,8 @@ impl Capsule2dMeshBuilder {
     }
 }
 
-impl MeshBuilder for Capsule2dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Capsule2dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         // The resolution is the number of vertices for one semicircle
         let resolution = self.resolution;
         let vertex_count = 2 * resolution;
@@ -1526,7 +1524,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use bevy_math::{prelude::Annulus, primitives::RegularPolygon, FloatOrd};
+    use crate::{prelude::Annulus, primitives::RegularPolygon, FloatOrd};
     use bevy_platform::collections::HashSet;
 
     use crate::{Mesh, MeshBuilder, Meshable, VertexAttributeValues};

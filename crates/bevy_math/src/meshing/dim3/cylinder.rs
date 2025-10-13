@@ -1,6 +1,9 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::Cylinder};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    ops,
+    primitives::Cylinder,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// Anchoring options for [`CylinderMeshBuilder`]
@@ -93,8 +96,8 @@ impl CylinderMeshBuilder {
     }
 }
 
-impl MeshBuilder for CylinderMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for CylinderMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let resolution = self.resolution;
         let segments = self.segments;
 
@@ -193,30 +196,23 @@ impl MeshBuilder for CylinderMeshBuilder {
             CylinderAnchor::MidPoint => (),
         };
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
 impl Meshable for Cylinder {
-    type Output = CylinderMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         CylinderMeshBuilder {
             cylinder: *self,
             ..Default::default()
         }
-    }
-}
-
-impl From<Cylinder> for Mesh {
-    fn from(cylinder: Cylinder) -> Self {
-        cylinder.mesh().build()
+        .mesh(builder);
     }
 }

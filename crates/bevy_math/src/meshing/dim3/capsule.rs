@@ -1,6 +1,7 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::Capsule3d, Vec2, Vec3};
+use crate::meshing::{MeshBuilder, Meshable};
+use crate::{ops, primitives::Capsule3d, Vec2, Vec3};
+use alloc::vec;
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// Manner in which UV coordinates are distributed vertically.
@@ -93,8 +94,8 @@ impl Capsule3dMeshBuilder {
     }
 }
 
-impl MeshBuilder for Capsule3dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Capsule3dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         // code adapted from https://behreajj.medium.com/making-a-capsule-mesh-via-script-in-five-3d-environments-c2214abf02db
         let Capsule3dMeshBuilder {
             capsule,
@@ -407,30 +408,22 @@ impl MeshBuilder for Capsule3dMeshBuilder {
         assert_eq!(vs.len(), vert_len);
         assert_eq!(tris.len(), fs_len as usize);
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vs)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, vns)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, vts)
-        .with_inserted_indices(Indices::U32(tris))
+        builder.triangles(
+            tris.into_iter(),
+            vs.into_iter()
+                .zip(vns.into_iter())
+                .zip(vts.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
 impl Meshable for Capsule3d {
-    type Output = Capsule3dMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         Capsule3dMeshBuilder {
             capsule: *self,
             ..Default::default()
         }
-    }
-}
-
-impl From<Capsule3d> for Mesh {
-    fn from(capsule: Capsule3d) -> Self {
-        capsule.mesh().build()
+        .mesh(builder);
     }
 }

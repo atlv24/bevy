@@ -1,6 +1,7 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{primitives::Cuboid, Vec3};
+use crate::meshing::{MeshBuilder, Meshable};
+use crate::{primitives::Cuboid, Vec3};
+use alloc::vec;
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// A builder used for creating a [`Mesh`] with a [`Cuboid`] shape.
@@ -19,8 +20,8 @@ impl Default for CuboidMeshBuilder {
     }
 }
 
-impl MeshBuilder for CuboidMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for CuboidMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let min = -self.half_size;
         let max = self.half_size;
 
@@ -62,38 +63,31 @@ impl MeshBuilder for CuboidMeshBuilder {
         let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
         let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
 
-        let indices = Indices::U32(vec![
+        let indices = vec![
             0, 1, 2, 2, 3, 0, // front
             4, 5, 6, 6, 7, 4, // back
             8, 9, 10, 10, 11, 8, // right
             12, 13, 14, 14, 15, 12, // left
             16, 17, 18, 18, 19, 16, // top
             20, 21, 22, 22, 23, 20, // bottom
-        ]);
+        ];
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
-        .with_inserted_indices(indices)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
 impl Meshable for Cuboid {
-    type Output = CuboidMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         CuboidMeshBuilder {
             half_size: self.half_size,
         }
-    }
-}
-
-impl From<Cuboid> for Mesh {
-    fn from(cuboid: Cuboid) -> Self {
-        cuboid.mesh().build()
+        .mesh(builder);
     }
 }

@@ -1,7 +1,8 @@
 use super::triangle3d;
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::primitives::{Tetrahedron, Triangle3d};
+use crate::meshing::{MeshBuilder, Meshable};
+use crate::primitives::{Tetrahedron, Triangle3d};
+use alloc::vec;
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// A builder used for creating a [`Mesh`] with a [`Tetrahedron`] shape.
@@ -11,8 +12,8 @@ pub struct TetrahedronMeshBuilder {
     tetrahedron: Tetrahedron,
 }
 
-impl MeshBuilder for TetrahedronMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for TetrahedronMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let mut faces: Vec<_> = self.tetrahedron.faces().into();
 
         // If the tetrahedron has negative orientation, reverse all the triangles so that
@@ -38,29 +39,21 @@ impl MeshBuilder for TetrahedronMeshBuilder {
         }
 
         // There are four faces and none of them share vertices.
-        let indices = Indices::U32(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+        let indices = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(indices)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v.into(), vn.into(), vt)),
+        );
     }
 }
 
 impl Meshable for Tetrahedron {
-    type Output = TetrahedronMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
-        TetrahedronMeshBuilder { tetrahedron: *self }
-    }
-}
-
-impl From<Tetrahedron> for Mesh {
-    fn from(tetrahedron: Tetrahedron) -> Self {
-        tetrahedron.mesh().build()
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
+        TetrahedronMeshBuilder { tetrahedron: *self }.mesh(builder);
     }
 }

@@ -1,6 +1,10 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::Torus, Vec3};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    ops,
+    primitives::Torus,
+    Vec3,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 use core::ops::RangeInclusive;
 
@@ -76,8 +80,8 @@ impl TorusMeshBuilder {
     }
 }
 
-impl MeshBuilder for TorusMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for TorusMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         // code adapted from http://apparat-engine.blogspot.com/2013/04/procedural-meshes-torus.html
 
         let n_vertices = (self.major_resolution + 1) * (self.minor_resolution + 1);
@@ -147,30 +151,23 @@ impl MeshBuilder for TorusMeshBuilder {
             }
         }
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v.into(), vn.into(), vt)),
+        );
     }
 }
 
 impl Meshable for Torus {
-    type Output = TorusMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         TorusMeshBuilder {
             torus: *self,
             ..Default::default()
         }
-    }
-}
-
-impl From<Torus> for Mesh {
-    fn from(torus: Torus) -> Self {
-        torus.mesh().build()
+        .mesh(builder);
     }
 }

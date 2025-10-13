@@ -1,10 +1,11 @@
-use bevy_math::{
+use crate::{
     primitives::{Annulus, Capsule2d, Circle, Ellipse, Extrusion, Primitive2d},
     Vec2, Vec3,
 };
+use alloc::vec;
+use alloc::vec::Vec;
 
 use super::{MeshBuilder, Meshable};
-use crate::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
 
 /// A type representing a segment of the perimeter of an extrudable mesh.
 pub enum PerimeterSegment {

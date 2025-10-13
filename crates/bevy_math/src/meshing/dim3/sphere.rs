@@ -1,6 +1,9 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::Sphere};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    ops,
+    primitives::Sphere,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 use core::f32::consts::PI;
 use hexasphere::shapes::IcoSphere;
@@ -81,7 +84,11 @@ impl SphereMeshBuilder {
     /// and an [`IcosphereError`] is returned.
     ///
     /// A good default is `5` subdivisions.
-    pub fn ico(&self, subdivisions: u32) -> Result<Mesh, IcosphereError> {
+    pub fn ico(
+        &self,
+        builder: &mut impl MeshBuilder,
+        subdivisions: u32,
+    ) -> Result<(), IcosphereError> {
         if subdivisions >= 80 {
             /*
             Number of triangles:
@@ -141,7 +148,7 @@ impl SphereMeshBuilder {
             .map(Into::into)
             .collect::<Vec<[f32; 3]>>();
 
-        let uvs = generated.raw_data().to_owned();
+        let uvs = generated.raw_data();
 
         let mut indices = Vec::with_capacity(generated.indices_per_main_triangle() * 20);
 
@@ -149,23 +156,22 @@ impl SphereMeshBuilder {
             generated.get_indices(i, &mut indices);
         }
 
-        let indices = Indices::U32(indices);
-
-        Ok(Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(indices)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, points)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs))
+        builder.triangles(
+            indices.into_iter(),
+            points
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, *vt)),
+        );
+        Ok(())
     }
 
     /// Creates a UV sphere [`Mesh`] with the given number of
     /// longitudinal sectors and latitudinal stacks, aka horizontal and vertical resolution.
     ///
     /// A good default is `32` sectors and `18` stacks.
-    pub fn uv(&self, sectors: u32, stacks: u32) -> Mesh {
+    pub fn uv(&self, builder: &mut impl MeshBuilder, sectors: u32, stacks: u32) {
         // Largely inspired from http://www.songho.ca/opengl/gl_sphere.html
 
         let sectors_f32 = sectors as f32;
@@ -220,45 +226,38 @@ impl SphereMeshBuilder {
             }
         }
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            vertices
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
-impl MeshBuilder for SphereMeshBuilder {
+impl Meshable for SphereMeshBuilder {
     /// Builds a [`Mesh`] according to the configuration in `self`.
     ///
     /// # Panics
     ///
     /// Panics if the sphere is a [`SphereKind::Ico`] with a subdivision count
     /// that is greater than or equal to `80` because there will be too many vertices.
-    fn build(&self) -> Mesh {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         match self.kind {
-            SphereKind::Ico { subdivisions } => self.ico(subdivisions).unwrap(),
-            SphereKind::Uv { sectors, stacks } => self.uv(sectors, stacks),
+            SphereKind::Ico { subdivisions } => self.ico(builder, subdivisions).unwrap(),
+            SphereKind::Uv { sectors, stacks } => self.uv(builder, sectors, stacks),
         }
     }
 }
 
 impl Meshable for Sphere {
-    type Output = SphereMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         SphereMeshBuilder {
             sphere: *self,
             ..Default::default()
         }
-    }
-}
-
-impl From<Sphere> for Mesh {
-    fn from(sphere: Sphere) -> Self {
-        sphere.mesh().build()
+        .mesh(builder);
     }
 }

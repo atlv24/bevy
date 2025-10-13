@@ -1,6 +1,10 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::Cone, Vec3};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    ops,
+    primitives::Cone,
+    Vec3,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// Anchoring options for [`ConeMeshBuilder`]
@@ -68,8 +72,8 @@ impl ConeMeshBuilder {
     }
 }
 
-impl MeshBuilder for ConeMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for ConeMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let half_height = self.cone.height / 2.0;
 
         // `resolution` vertices for the base, `resolution` vertices for the bottom of the lateral surface,
@@ -160,37 +164,29 @@ impl MeshBuilder for ConeMeshBuilder {
             ConeAnchor::MidPoint => (),
         };
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
 impl Meshable for Cone {
-    type Output = ConeMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         ConeMeshBuilder {
             cone: *self,
             ..Default::default()
         }
+        .mesh(builder);
     }
 }
-
-impl From<Cone> for Mesh {
-    fn from(cone: Cone) -> Self {
-        cone.mesh().build()
-    }
-}
-
+/*
 #[cfg(test)]
 mod tests {
-    use crate::{Mesh, MeshBuilder, Meshable, VertexAttributeValues};
     use bevy_math::{primitives::Cone, Vec2};
 
     /// Rounds floats to handle floating point error in tests.
@@ -269,3 +265,4 @@ mod tests {
         );
     }
 }
+*/

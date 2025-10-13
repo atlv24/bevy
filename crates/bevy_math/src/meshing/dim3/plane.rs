@@ -1,6 +1,9 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{primitives::Plane3d, Dir3, Quat, Vec2, Vec3};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    primitives::Plane3d,
+    Dir3, Quat, Vec2, Vec3,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// A builder used for creating a [`Mesh`] with a [`Plane3d`] shape.
@@ -93,8 +96,8 @@ impl PlaneMeshBuilder {
     }
 }
 
-impl MeshBuilder for PlaneMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for PlaneMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let z_vertex_count = self.subdivisions + 2;
         let x_vertex_count = self.subdivisions + 2;
         let num_vertices = (z_vertex_count * x_vertex_count) as usize;
@@ -131,30 +134,23 @@ impl MeshBuilder for PlaneMeshBuilder {
             }
         }
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v.into(), vn, vt)),
+        );
     }
 }
 
 impl Meshable for Plane3d {
-    type Output = PlaneMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         PlaneMeshBuilder {
             plane: *self,
             subdivisions: 0,
         }
-    }
-}
-
-impl From<Plane3d> for Mesh {
-    fn from(plane: Plane3d) -> Self {
-        plane.mesh().build()
+        .mesh(builder);
     }
 }

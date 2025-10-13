@@ -1,6 +1,10 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{ops, primitives::ConicalFrustum, Vec3};
+use crate::{
+    meshing::{MeshBuilder, Meshable},
+    ops,
+    primitives::ConicalFrustum,
+    Vec3,
+};
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// A builder used for creating a [`Mesh`] with a [`ConicalFrustum`] shape.
@@ -60,8 +64,8 @@ impl ConicalFrustumMeshBuilder {
     }
 }
 
-impl MeshBuilder for ConicalFrustumMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for ConicalFrustumMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         debug_assert!(self.resolution > 2);
         debug_assert!(self.segments > 0);
 
@@ -155,30 +159,23 @@ impl MeshBuilder for ConicalFrustumMeshBuilder {
         build_cap(true, radius_top);
         build_cap(false, radius_bottom);
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(Indices::U32(indices))
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v, vn, vt)),
+        );
     }
 }
 
 impl Meshable for ConicalFrustum {
-    type Output = ConicalFrustumMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         ConicalFrustumMeshBuilder {
             frustum: *self,
             ..Default::default()
         }
-    }
-}
-
-impl From<ConicalFrustum> for Mesh {
-    fn from(frustum: ConicalFrustum) -> Self {
-        frustum.mesh().build()
+        .mesh(builder);
     }
 }

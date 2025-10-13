@@ -19,34 +19,33 @@
 //! # }
 //! ```
 
-mod dim2;
-pub use dim2::*;
+//mod dim2;
+//pub use dim2::*;
 
 mod dim3;
 pub use dim3::*;
 
-mod extrusion;
-pub use extrusion::*;
+//mod extrusion;
+//pub use extrusion::*;
 
-use super::Mesh;
-
-/// A trait for shapes that can be turned into a [`Mesh`].
+/// A trait for shapes that can be turned into a `Mesh`.
 pub trait Meshable {
-    /// The output of [`Self::mesh`]. This will be a [`MeshBuilder`] used for creating a [`Mesh`].
-    type Output: MeshBuilder;
-
-    /// Creates a [`Mesh`] for a shape.
-    fn mesh(&self) -> Self::Output;
+    /// Creates a `Mesh` for a shape.
+    fn mesh(&self, builder: &mut impl MeshBuilder);
 }
 
-/// A trait used to build [`Mesh`]es from a configuration
+/// A trait used to build `Mesh`es from a configuration
 pub trait MeshBuilder {
-    /// Builds a [`Mesh`] based on the configuration in `self`.
-    fn build(&self) -> Mesh;
-}
-
-impl<T: MeshBuilder> From<T> for Mesh {
-    fn from(builder: T) -> Self {
-        builder.build()
-    }
+    /// Push the elements of a u32 iterator as indices and the elements of a (Position, Normal, UV) iterator as vertices.
+    fn triangles<I: Iterator<Item = u32>, V: Iterator<Item = ([f32; 3], [f32; 3], [f32; 2])>>(
+        &mut self,
+        indices: I,
+        vertices: V,
+    );
+    /// Push the elements of a u32 iterator as indices and the elements of a position iterator as vertices.
+    fn lines<I: Iterator<Item = u32>, V: Iterator<Item = [f32; 3]>>(
+        &mut self,
+        indices: I,
+        vertices: V,
+    );
 }

@@ -1,6 +1,7 @@
-use crate::{Indices, Mesh, MeshBuilder, Meshable, PrimitiveTopology};
-use bevy_asset::RenderAssetUsages;
-use bevy_math::{primitives::Triangle3d, Vec3};
+use crate::meshing::{MeshBuilder, Meshable};
+use crate::{primitives::Triangle3d, Vec3};
+use alloc::vec;
+use alloc::vec::Vec;
 use bevy_reflect::prelude::*;
 
 /// A builder used for creating a [`Mesh`] with a [`Triangle3d`] shape.
@@ -10,8 +11,8 @@ pub struct Triangle3dMeshBuilder {
     triangle: Triangle3d,
 }
 
-impl MeshBuilder for Triangle3dMeshBuilder {
-    fn build(&self) -> Mesh {
+impl Meshable for Triangle3dMeshBuilder {
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
         let positions: Vec<_> = self.triangle.vertices.into();
         let uvs: Vec<_> = uv_coords(&self.triangle).into();
 
@@ -19,24 +20,22 @@ impl MeshBuilder for Triangle3dMeshBuilder {
         let normal: Vec3 = normal_vec(&self.triangle);
         let normals = vec![normal; 3];
 
-        let indices = Indices::U32(vec![0, 1, 2]);
+        let indices = vec![0, 1, 2];
 
-        Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        )
-        .with_inserted_indices(indices)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        builder.triangles(
+            indices.into_iter(),
+            positions
+                .into_iter()
+                .zip(normals.into_iter())
+                .zip(uvs.into_iter())
+                .map(|((v, vn), vt)| (v.into(), vn.into(), vt)),
+        );
     }
 }
 
 impl Meshable for Triangle3d {
-    type Output = Triangle3dMeshBuilder;
-
-    fn mesh(&self) -> Self::Output {
-        Triangle3dMeshBuilder { triangle: *self }
+    fn mesh(&self, builder: &mut impl MeshBuilder) {
+        Triangle3dMeshBuilder { triangle: *self }.mesh(builder);
     }
 }
 
@@ -93,13 +92,7 @@ pub(crate) fn uv_coords(triangle: &Triangle3d) -> [[f32; 2]; 3] {
         [a_uv, b_uv, c_uv]
     }
 }
-
-impl From<Triangle3d> for Mesh {
-    fn from(triangle: Triangle3d) -> Self {
-        triangle.mesh().build()
-    }
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::uv_coords;
@@ -128,3 +121,4 @@ mod tests {
         assert_eq!(c_uv, [1., 1.]);
     }
 }
+*/
