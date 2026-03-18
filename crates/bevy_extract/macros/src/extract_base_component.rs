@@ -19,6 +19,25 @@ pub fn derive_extract_component(input: TokenStream) -> TokenStream {
     let struct_name = &ast.ident;
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
 
+    let app_label = match ast
+        .attrs
+        .iter()
+        .find(|a| a.path().is_ident("extract_app"))
+    {
+        Some(attr) => match attr.parse_args::<syn::Type>() {
+            Ok(label) => label,
+            Err(e) => return e.to_compile_error().into(),
+        },
+        None => {
+            return syn::Error::new_spanned(
+                &ast.ident,
+                "ExtractBaseComponent requires #[extract_app(MyAppLabel)] to specify the target sub-app",
+            )
+            .to_compile_error()
+            .into();
+        }
+    };
+
     let filter = if let Some(attr) = ast
         .attrs
         .iter()
@@ -39,11 +58,11 @@ pub fn derive_extract_component(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(quote! {
-        impl #impl_generics #bevy_extract_path::sync_component::SyncComponent for #struct_name #type_generics #where_clause {
+        impl #impl_generics #bevy_extract_path::sync_component::SyncComponent<#app_label> for #struct_name #type_generics #where_clause {
             type Out = Self;
         }
 
-        impl #impl_generics #bevy_extract_path::extract_base_component::ExtractBaseComponent for #struct_name #type_generics #where_clause {
+        impl #impl_generics #bevy_extract_path::extract_base_component::ExtractComponent<#app_label> for #struct_name #type_generics #where_clause {
             type QueryData = &'static Self;
 
             type QueryFilter = #filter;

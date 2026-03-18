@@ -11,7 +11,8 @@ pub(crate) fn bevy_extract_path() -> syn::Path {
     BevyManifest::shared(|manifest| manifest.get_path("bevy_extract"))
 }
 
-#[proc_macro_derive(ExtractBaseResource)]
+/// Implements `ExtractResource` trait for a resource.
+#[proc_macro_derive(ExtractBaseResource, attributes(extract_app))]
 pub fn derive_extract_resource(input: TokenStream) -> TokenStream {
     extract_base_resource::derive_extract_resource(input)
 }
@@ -43,7 +44,10 @@ pub fn derive_extract_resource(input: TokenStream) -> TokenStream {
 ///     pub should_bar: bool,
 /// }
 /// ```
-#[proc_macro_derive(ExtractBaseComponent, attributes(extract_component_filter))]
+#[proc_macro_derive(
+    ExtractBaseComponent,
+    attributes(extract_app, extract_component_filter)
+)]
 pub fn derive_extract_component(input: TokenStream) -> TokenStream {
     extract_base_component::derive_extract_component(input)
 }
