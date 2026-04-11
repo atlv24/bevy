@@ -5,10 +5,6 @@
 
 #import bevy_render::maths::PI
 
-#ifdef TONEMAP_IN_SHADER
-#import bevy_core_pipeline::tonemapping::tone_mapping
-#endif
-
 // Sweep across hues on y axis with value from 0.0 to +15EV across x axis
 // quantized into 24 steps for both axis.
 fn color_sweep(uv_input: vec2<f32>) -> vec3<f32> {
@@ -56,8 +52,5 @@ fn fragment(
         out = continuous_hue(vec2(uv.y * 2.0, uv.x));
     }
     var color = vec4(out, 1.0);
-#ifdef TONEMAP_IN_SHADER
-    color = tone_mapping(color, mesh_view_bindings::view.color_grading);
-#endif
     return color;
 }

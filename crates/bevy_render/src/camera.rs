@@ -53,10 +53,6 @@ use bevy_window::{PrimaryWindow, Window, WindowCreated, WindowResized, WindowSca
 use itertools::Either;
 use wgpu::TextureFormat;
 
-/// Main-pass color [`TextureFormat`] keyed by camera render entity.
-#[derive(Resource, Default, Deref, DerefMut)]
-pub struct CameraMainPassTextureFormats(pub HashMap<Entity, TextureFormat>);
-
 #[derive(Default)]
 pub struct CameraPlugin;
 
@@ -84,7 +80,6 @@ impl Plugin for CameraPlugin {
 
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
-                .init_resource::<CameraMainPassTextureFormats>()
                 .init_resource::<SortedCameras>()
                 .init_resource::<DirtySpecializations>()
                 .init_resource::<DirtyWireframeSpecializations>()
@@ -464,15 +459,14 @@ pub struct ExtractedCamera {
     pub clear_color: ClearColorConfig,
     pub sorted_camera_index_for_target: usize,
     pub exposure: f32,
-    pub hdr: bool,
     /// When [`CompositingSpace::Srgb`], the main texture uses linear storage (`Rgba8Unorm`)
     /// and shaders output sRGB-encoded values for gamma-encoded blending.
     pub compositing_space: Option<CompositingSpace>,
+    pub texture_format: TextureFormat,
 }
 
 pub fn extract_cameras(
     mut commands: Commands,
-    mut main_pass_formats: ResMut<CameraMainPassTextureFormats>,
     query: Extract<
         Query<(
             Entity,
@@ -507,7 +501,6 @@ pub fn extract_cameras(
     gpu_preprocessing_support: Res<GpuPreprocessingSupport>,
     visibility_extraction_system_param: VisibilityExtractionSystemParam,
 ) {
-    main_pass_formats.clear();
     let primary_window = primary_window.iter().next();
     type ExtractedCameraComponents = (
         ExtractedCamera,
@@ -619,7 +612,6 @@ pub fn extract_cameras(
             } else {
                 output_texture_format
             };
-            main_pass_formats.insert(render_entity, texture_format);
 
             let mut commands = commands.entity(render_entity);
             commands.insert((
@@ -638,8 +630,8 @@ pub fn extract_cameras(
                     exposure: exposure
                         .map(Exposure::exposure)
                         .unwrap_or_else(|| Exposure::default().exposure()),
-                    hdr,
                     compositing_space: compositing_space.copied(),
+                    texture_format,
                 },
                 ExtractedView {
                     retained_view_entity: RetainedViewEntity::new(main_entity.into(), None, 0),
@@ -706,7 +698,6 @@ pub struct SortedCamera {
     pub entity: Entity,
     pub order: isize,
     pub target: Option<NormalizedRenderTarget>,
-    pub hdr: bool,
 }
 
 pub fn sort_cameras(
@@ -719,7 +710,6 @@ pub fn sort_cameras(
             entity,
             order: camera.order,
             target: camera.target.clone(),
-            hdr: camera.hdr,
         });
     }
     // sort by order and ensure within an order, RenderTargets of the same type are packed together
@@ -737,9 +727,7 @@ pub fn sort_cameras(
             ambiguities.insert(new_order_target.clone());
         }
         if let Some(target) = &sorted_camera.target {
-            let count = target_counts
-                .entry((target.clone(), sorted_camera.hdr))
-                .or_insert(0usize);
+            let count = target_counts.entry(target.clone()).or_insert(0usize);
             let (_, mut camera) = cameras.get_mut(sorted_camera.entity).unwrap();
             camera.sorted_camera_index_for_target = *count;
             *count += 1;

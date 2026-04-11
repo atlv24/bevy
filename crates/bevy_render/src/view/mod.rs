@@ -866,12 +866,6 @@ impl ViewTarget {
         self.main_texture_format
     }
 
-    /// Returns `true` if and only if the main texture is [`Self::TEXTURE_FORMAT_HDR`]
-    #[inline]
-    pub fn is_hdr(&self) -> bool {
-        self.main_texture_format == ViewTarget::TEXTURE_FORMAT_HDR
-    }
-
     /// The final texture this view will render to.
     #[inline]
     pub fn out_texture(&self) -> &TextureView {

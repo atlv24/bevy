@@ -20,10 +20,12 @@ pub mod ui_texture_slice_pipeline;
 mod debug_overlay;
 
 use bevy_camera::visibility::InheritedVisibility;
-use bevy_camera::{Camera, Camera2d, Camera3d, RenderTarget};
+use bevy_camera::{Camera, Camera2d, Camera3d, CompositingSpace, Hdr, RenderTarget};
 use bevy_reflect::prelude::ReflectDefault;
 use bevy_reflect::Reflect;
-use bevy_render::camera::{extract_cameras, CameraMainPassTextureFormats};
+use bevy_render::camera::{extract_cameras, NormalizedRenderTargetExt};
+use bevy_render::texture::ManualTextureViews;
+use bevy_render::view::{ExtractedWindows, ViewTarget};
 use bevy_shader::load_shader_library;
 use bevy_sprite_render::SpriteAssetEvents;
 use bevy_ui::widget::{ImageNode, TextScroll, TextShadow, ViewportNode};
@@ -56,6 +58,7 @@ use bevy_render::{
     Extract, ExtractSchedule, GpuResourceAppExt, Render, RenderApp, RenderStartup, RenderSystems,
 };
 use bevy_sprite::BorderRect;
+use bevy_window::PrimaryWindow;
 #[cfg(feature = "bevy_ui_debug")]
 pub use debug_overlay::{GlobalUiDebugOptions, UiDebugOptions};
 
@@ -746,18 +749,35 @@ pub fn extract_ui_camera_view(
                 Entity,
                 RenderEntity,
                 &Camera,
+                &RenderTarget,
                 Option<&UiAntiAlias>,
                 Option<&BoxShadowSamples>,
+                Has<Hdr>,
+                Option<&CompositingSpace>,
             ),
             Or<(With<Camera2d>, With<Camera3d>)>,
         >,
     >,
-    main_pass_formats: Res<CameraMainPassTextureFormats>,
+    primary_window: Extract<Query<Entity, With<PrimaryWindow>>>,
+    extracted_windows: Res<ExtractedWindows>,
+    manual_texture_views: Res<ManualTextureViews>,
+    images: Res<RenderAssets<GpuImage>>,
     mut live_entities: Local<HashSet<RetainedViewEntity>>,
 ) {
     live_entities.clear();
+    let primary_window = primary_window.iter().next();
 
-    for (main_entity, render_entity, camera, ui_anti_alias, shadow_samples) in &query {
+    for (
+        main_entity,
+        render_entity,
+        camera,
+        render_target,
+        ui_anti_alias,
+        shadow_samples,
+        hdr,
+        compositing_space,
+    ) in &query
+    {
         // ignore inactive cameras
         if !camera.is_active {
             commands
@@ -774,12 +794,23 @@ pub fn extract_ui_camera_view(
         ) && target_size.x != 0
             && target_size.y != 0
         {
-            let Some(texture_format) = main_pass_formats.get(&render_entity).copied() else {
-                commands
-                    .get_entity(render_entity)
-                    .expect("Camera entity wasn't synced.")
-                    .remove::<(UiCameraView, UiAntiAlias, BoxShadowSamples)>();
-                continue;
+            let target = render_target.normalize(primary_window);
+            let output_texture_format = target
+                .as_ref()
+                .and_then(|target| {
+                    target.get_texture_view_format(
+                        &extracted_windows,
+                        &images,
+                        &manual_texture_views,
+                    )
+                })
+                .unwrap_or(TextureFormat::bevy_default());
+            let texture_format = if hdr {
+                ViewTarget::TEXTURE_FORMAT_HDR
+            } else if compositing_space.is_some_and(|s| *s == CompositingSpace::Srgb) {
+                TextureFormat::Rgba8Unorm
+            } else {
+                output_texture_format
             };
 
             // use a projection matrix with the origin in the top left instead of the bottom left that comes with OrthographicProjection

@@ -4,9 +4,8 @@ use super::{
 };
 use crate::*;
 use bevy_camera::{Camera3d, Projection};
-use bevy_core_pipeline::{
-    prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
-    tonemapping::{DebandDither, Tonemapping},
+use bevy_core_pipeline::prepass::{
+    DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass,
 };
 use bevy_derive::{Deref, DerefMut};
 use bevy_light::{EnvironmentMapLight, IrradianceVolume, ShadowFilteringMethod};
@@ -18,11 +17,7 @@ use bevy_mesh::VertexBufferLayout;
 use bevy_mesh::{Mesh, MeshVertexBufferLayout, MeshVertexBufferLayoutRef, MeshVertexBufferLayouts};
 use bevy_platform::collections::{HashMap, HashSet};
 use bevy_render::erased_render_asset::ErasedRenderAssets;
-use bevy_render::{
-    camera::TemporalJitter,
-    render_resource::*,
-    view::{ExtractedView, ViewTarget},
-};
+use bevy_render::{camera::TemporalJitter, render_resource::*, view::ExtractedView};
 use bevy_utils::default;
 use core::any::{Any, TypeId};
 
@@ -48,8 +43,6 @@ pub fn prepare_material_meshlet_meshes_main_opaque_pass(
         (
             &mut MeshletViewMaterialsMainOpaquePass,
             &ExtractedView,
-            Option<&Tonemapping>,
-            Option<&DebandDither>,
             Option<&ShadowFilteringMethod>,
             (Has<ScreenSpaceAmbientOcclusion>, Has<DistanceFog>),
             (
@@ -71,8 +64,6 @@ pub fn prepare_material_meshlet_meshes_main_opaque_pass(
     for (
         mut materials,
         view,
-        tonemapping,
-        dither,
         shadow_filter_method,
         (ssao, distance_fog),
         (normal_prepass, depth_prepass, motion_vector_prepass, deferred_prepass),
@@ -82,7 +73,6 @@ pub fn prepare_material_meshlet_meshes_main_opaque_pass(
         has_irradiance_volumes,
     ) in &mut views
     {
-        let is_hdr = view.texture_format == ViewTarget::TEXTURE_FORMAT_HDR;
         let mut view_key = MeshPipelineKey::from_msaa_samples(1)
             | MeshPipelineKey::from_color_target_format(view.texture_format);
 
@@ -128,16 +118,6 @@ pub fn prepare_material_meshlet_meshes_main_opaque_pass(
             }
             ShadowFilteringMethod::Temporal => {
                 view_key |= MeshPipelineKey::SHADOW_FILTER_METHOD_TEMPORAL;
-            }
-        }
-
-        if !is_hdr {
-            if let Some(tonemapping) = tonemapping {
-                view_key |= MeshPipelineKey::TONEMAP_IN_SHADER;
-                view_key |= tonemapping_pipeline_key(*tonemapping);
-            }
-            if let Some(DebandDither::Enabled) = dither {
-                view_key |= MeshPipelineKey::DEBAND_DITHER;
             }
         }
 
@@ -299,7 +279,6 @@ pub fn prepare_material_meshlet_meshes_prepass(
         (normal_prepass, motion_vector_prepass, deferred_prepass),
     ) in &mut views
     {
-        let is_hdr = view.texture_format == ViewTarget::TEXTURE_FORMAT_HDR;
         let mut view_key = MeshPipelineKey::from_msaa_samples(1)
             | MeshPipelineKey::from_color_target_format(view.texture_format);
 

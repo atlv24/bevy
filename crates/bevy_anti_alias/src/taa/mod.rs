@@ -4,6 +4,7 @@ use bevy_camera::{Camera, Camera3d};
 use bevy_core_pipeline::{
     prepass::{DepthPrepass, MotionVectorPrepass, ViewPrepassTextures},
     schedule::{Core3d, Core3dSystems},
+    tonemapping::Tonemapping,
     FullscreenShader,
 };
 use bevy_diagnostic::FrameCount;
@@ -15,7 +16,7 @@ use bevy_ecs::{
     schedule::IntoScheduleConfigs,
     system::{Commands, Query, Res, ResMut},
 };
-use bevy_image::{BevyDefault as _, ToExtents};
+use bevy_image::ToExtents;
 use bevy_math::vec2;
 use bevy_reflect::{std_traits::ReflectDefault, Reflect};
 use bevy_render::{
@@ -292,7 +293,8 @@ struct TaaPipelineSpecializer;
 
 #[derive(PartialEq, Eq, Hash, Clone, SpecializerKey)]
 struct TaaPipelineKey {
-    hdr: bool,
+    tonemapping: bool,
+    texture_format: TextureFormat,
     reset: bool,
 }
 
@@ -305,19 +307,16 @@ impl Specializer<RenderPipeline> for TaaPipelineSpecializer {
         descriptor: &mut RenderPipelineDescriptor,
     ) -> Result<Canonical<Self::Key>, BevyError> {
         let fragment = descriptor.fragment_mut()?;
-        let format = if key.hdr {
+        if key.tonemapping {
             fragment.shader_defs.push("TONEMAP".into());
-            ViewTarget::TEXTURE_FORMAT_HDR
-        } else {
-            TextureFormat::bevy_default()
-        };
+        }
 
         if key.reset {
             fragment.shader_defs.push("RESET".into());
         }
 
         let color_target_state = ColorTargetState {
-            format,
+            format: key.texture_format,
             blend: None,
             write_mask: ColorWrites::ALL,
         };
@@ -405,11 +404,7 @@ fn prepare_taa_history_textures(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: if camera.hdr {
-                    ViewTarget::TEXTURE_FORMAT_HDR
-                } else {
-                    TextureFormat::bevy_default()
-                },
+                format: camera.texture_format,
                 usage: TextureUsages::TEXTURE_BINDING | TextureUsages::RENDER_ATTACHMENT,
                 view_formats: &[],
             };
@@ -444,11 +439,17 @@ fn prepare_taa_pipelines(
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,
     mut pipeline: ResMut<TaaPipeline>,
-    cameras: Query<(Entity, &ExtractedCamera, &TemporalAntiAliasing)>,
+    cameras: Query<(
+        Entity,
+        &ExtractedCamera,
+        &TemporalAntiAliasing,
+        &Tonemapping,
+    )>,
 ) -> Result<(), BevyError> {
-    for (entity, camera, taa_settings) in &cameras {
+    for (entity, camera, taa_settings, tonemapping) in &cameras {
         let mut pipeline_key = TaaPipelineKey {
-            hdr: camera.hdr,
+            tonemapping: *tonemapping != Tonemapping::None,
+            texture_format: camera.texture_format,
             reset: taa_settings.reset,
         };
         let pipeline_id = pipeline

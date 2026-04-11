@@ -4,7 +4,6 @@ use crate::{
     ScreenSpaceReflectionsUniform, ViewContactShadowsUniformOffset,
     ViewEnvironmentMapUniformOffset, ViewFogUniformOffset, ViewLightProbesUniformOffset,
     ViewLightsUniformOffset, ViewScreenSpaceReflectionsUniformOffset,
-    TONEMAPPING_LUT_SAMPLER_BINDING_INDEX, TONEMAPPING_LUT_TEXTURE_BINDING_INDEX,
 };
 use bevy_app::prelude::*;
 use bevy_asset::{embedded_asset, load_embedded_asset, AssetServer, Handle};
@@ -15,12 +14,10 @@ use bevy_core_pipeline::{
     },
     prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass},
     schedule::{Core3d, Core3dSystems},
-    tonemapping::{DebandDither, Tonemapping},
 };
 use bevy_ecs::prelude::*;
 use bevy_light::{EnvironmentMapLight, IrradianceVolume, ShadowFilteringMethod};
 use bevy_render::{
-    camera::ExtractedCamera,
     extract_component::{
         ComponentUniforms, ExtractComponent, ExtractComponentPlugin, UniformComponentPlugin,
     },
@@ -30,7 +27,7 @@ use bevy_render::{
     Render, RenderApp, RenderSystems,
 };
 use bevy_render::{GpuResourceAppExt, RenderStartup};
-use bevy_shader::{Shader, ShaderDefVal};
+use bevy_shader::Shader;
 use bevy_utils::default;
 
 pub struct DeferredPbrLightingPlugin;
@@ -231,43 +228,6 @@ impl SpecializedRenderPipeline for DeferredLightingLayout {
         #[cfg(all(feature = "webgl", target_arch = "wasm32", not(feature = "webgpu")))]
         shader_defs.push("WEBGL2".into());
 
-        if key.contains(MeshPipelineKey::TONEMAP_IN_SHADER) {
-            shader_defs.push("TONEMAP_IN_SHADER".into());
-            shader_defs.push(ShaderDefVal::UInt(
-                "TONEMAPPING_LUT_TEXTURE_BINDING_INDEX".into(),
-                TONEMAPPING_LUT_TEXTURE_BINDING_INDEX,
-            ));
-            shader_defs.push(ShaderDefVal::UInt(
-                "TONEMAPPING_LUT_SAMPLER_BINDING_INDEX".into(),
-                TONEMAPPING_LUT_SAMPLER_BINDING_INDEX,
-            ));
-
-            let method = key.intersection(MeshPipelineKey::TONEMAP_METHOD_RESERVED_BITS);
-
-            if method == MeshPipelineKey::TONEMAP_METHOD_NONE {
-                shader_defs.push("TONEMAP_METHOD_NONE".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_REINHARD {
-                shader_defs.push("TONEMAP_METHOD_REINHARD".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE {
-                shader_defs.push("TONEMAP_METHOD_REINHARD_LUMINANCE".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_ACES_FITTED {
-                shader_defs.push("TONEMAP_METHOD_ACES_FITTED".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_AGX {
-                shader_defs.push("TONEMAP_METHOD_AGX".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM {
-                shader_defs.push("TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_BLENDER_FILMIC {
-                shader_defs.push("TONEMAP_METHOD_BLENDER_FILMIC".into());
-            } else if method == MeshPipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE {
-                shader_defs.push("TONEMAP_METHOD_TONY_MC_MAPFACE".into());
-            }
-
-            // Debanding is tied to tonemapping in the shader, cannot run without it.
-            if key.contains(MeshPipelineKey::DEBAND_DITHER) {
-                shader_defs.push("DEBAND_DITHER".into());
-            }
-        }
-
         if key.contains(MeshPipelineKey::SCREEN_SPACE_AMBIENT_OCCLUSION) {
             shader_defs.push("SCREEN_SPACE_AMBIENT_OCCLUSION".into());
         }
@@ -416,10 +376,7 @@ pub fn prepare_deferred_lighting_pipelines(
     deferred_lighting_layout: Res<DeferredLightingLayout>,
     cameras: Query<(
         Entity,
-        &ExtractedCamera,
         &ExtractedView,
-        Option<&Tonemapping>,
-        Option<&DebandDither>,
         Option<&ShadowFilteringMethod>,
         (
             Has<ScreenSpaceAmbientOcclusion>,
@@ -440,10 +397,7 @@ pub fn prepare_deferred_lighting_pipelines(
 ) {
     for (
         entity,
-        _camera,
         view,
-        tonemapping,
-        dither,
         shadow_filter_method,
         (ssao, ssr, distance_fog),
         (normal_prepass, depth_prepass, motion_vector_prepass, deferred_prepass),
@@ -461,7 +415,6 @@ pub fn prepare_deferred_lighting_pipelines(
             continue;
         }
 
-        let is_hdr = view.texture_format == ViewTarget::TEXTURE_FORMAT_HDR;
         let mut view_key = MeshPipelineKey::from_color_target_format(view.texture_format);
 
         if normal_prepass {
@@ -486,29 +439,6 @@ pub fn prepare_deferred_lighting_pipelines(
 
         // Always true, since we're in the deferred lighting pipeline
         view_key |= MeshPipelineKey::DEFERRED_PREPASS;
-
-        if !is_hdr {
-            if let Some(tonemapping) = tonemapping {
-                view_key |= MeshPipelineKey::TONEMAP_IN_SHADER;
-                view_key |= match tonemapping {
-                    Tonemapping::None => MeshPipelineKey::TONEMAP_METHOD_NONE,
-                    Tonemapping::Reinhard => MeshPipelineKey::TONEMAP_METHOD_REINHARD,
-                    Tonemapping::ReinhardLuminance => {
-                        MeshPipelineKey::TONEMAP_METHOD_REINHARD_LUMINANCE
-                    }
-                    Tonemapping::AcesFitted => MeshPipelineKey::TONEMAP_METHOD_ACES_FITTED,
-                    Tonemapping::AgX => MeshPipelineKey::TONEMAP_METHOD_AGX,
-                    Tonemapping::SomewhatBoringDisplayTransform => {
-                        MeshPipelineKey::TONEMAP_METHOD_SOMEWHAT_BORING_DISPLAY_TRANSFORM
-                    }
-                    Tonemapping::TonyMcMapface => MeshPipelineKey::TONEMAP_METHOD_TONY_MC_MAPFACE,
-                    Tonemapping::BlenderFilmic => MeshPipelineKey::TONEMAP_METHOD_BLENDER_FILMIC,
-                };
-            }
-            if let Some(DebandDither::Enabled) = dither {
-                view_key |= MeshPipelineKey::DEBAND_DITHER;
-            }
-        }
 
         if ssao {
             view_key |= MeshPipelineKey::SCREEN_SPACE_AMBIENT_OCCLUSION;

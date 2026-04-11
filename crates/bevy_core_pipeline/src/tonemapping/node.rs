@@ -44,10 +44,6 @@ pub fn tonemapping(
         return;
     }
 
-    if !target.is_hdr() {
-        return;
-    }
-
     let Some(pipeline) = pipeline_cache.get_render_pipeline(view_tonemapping_pipeline.0) else {
         return;
     };
