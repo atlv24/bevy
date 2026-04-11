@@ -459,7 +459,7 @@ bitflags::bitflags! {
 }
 
 impl Mesh2dPipelineKey {
-    const COLOR_TARGET_FORMAT_MASK_BITS: u32 = 0b1111;
+    const COLOR_TARGET_FORMAT_MASK_BITS: u32 = bevy_render::view::COLOR_TARGET_FORMAT_MASK_BITS;
     const COLOR_TARGET_FORMAT_SHIFT_BITS: u32 = 7;
     const MSAA_MASK_BITS: u32 = 0b111;
     const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
