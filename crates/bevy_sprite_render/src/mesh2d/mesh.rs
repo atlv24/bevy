@@ -443,11 +443,11 @@ bitflags::bitflags! {
     // FIXME: make normals optional?
     pub struct Mesh2dPipelineKey: u32 {
         const NONE                              = 0;
-        const DEBAND_DITHER                     = 1 << 2;
-        const BLEND_ALPHA                       = 1 << 3;
-        const MAY_DISCARD                       = 1 << 4;
-        const SRGB_COMPOSITING                  = 1 << 5;
-        const OKLAB_COMPOSITING                 = 1 << 6;
+        const DEBAND_DITHER                     = 1 << 1;
+        const BLEND_ALPHA                       = 1 << 2;
+        const MAY_DISCARD                       = 1 << 3;
+        const SRGB_COMPOSITING                  = 1 << 4;
+        const OKLAB_COMPOSITING                 = 1 << 5;
         const COLOR_TARGET_FORMAT_RESERVED_BITS = Self::COLOR_TARGET_FORMAT_MASK_BITS << Self::COLOR_TARGET_FORMAT_SHIFT_BITS;
         const MSAA_RESERVED_BITS                = Self::MSAA_MASK_BITS << Self::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS  = Self::PRIMITIVE_TOPOLOGY_MASK_BITS << Self::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
@@ -460,7 +460,7 @@ bitflags::bitflags! {
 
 impl Mesh2dPipelineKey {
     const COLOR_TARGET_FORMAT_MASK_BITS: u32 = bevy_render::view::COLOR_TARGET_FORMAT_MASK_BITS;
-    const COLOR_TARGET_FORMAT_SHIFT_BITS: u32 = 7;
+    const COLOR_TARGET_FORMAT_SHIFT_BITS: u32 = 6;
     const MSAA_MASK_BITS: u32 = 0b111;
     const MSAA_SHIFT_BITS: u32 = 32 - Self::MSAA_MASK_BITS.count_ones();
     const PRIMITIVE_TOPOLOGY_MASK_BITS: u32 = 0b111;
