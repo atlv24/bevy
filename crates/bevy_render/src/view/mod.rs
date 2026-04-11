@@ -99,11 +99,8 @@ pub const COLOR_TARGET_FORMAT_MASK_BITS: u32 = 0b11111;
 
 /// Encode a [`TextureFormat`] as a 5-bit code for use in pipeline key bitfields.
 ///
-/// Supports all WebGPU renderable and blenderable texture formats.
-/// Some of them needs optional features, see <https://gpuweb.github.io/gpuweb/#plain-color-formats>.
-///
-/// Covers all color-renderable formats likely to appear as a main-pass color target.
-/// Unknown formats map to `Rgba8UnormSrgb` (code 5).
+/// Covers all WebGPU renderable and blenderable texture formats. Some of them needs optional features.
+/// See <https://gpuweb.github.io/gpuweb/#plain-color-formats>.
 #[inline]
 pub fn color_target_format_to_code(format: TextureFormat) -> Option<u8> {
     Some(match format {

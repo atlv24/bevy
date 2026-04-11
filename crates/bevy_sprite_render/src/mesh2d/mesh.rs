@@ -478,7 +478,8 @@ impl Mesh2dPipelineKey {
     /// Create a pipeline key from the view's color target format.
     #[inline]
     pub fn from_color_target_format(format: TextureFormat) -> Self {
-        let code = color_target_format_to_code(format).unwrap_or_default() as u32;
+        let code = color_target_format_to_code(format)
+            .expect("Texture format is not supported by the pipeline") as u32;
         Self::from_bits_retain(
             (code & Self::COLOR_TARGET_FORMAT_MASK_BITS) << Self::COLOR_TARGET_FORMAT_SHIFT_BITS,
         )
@@ -489,7 +490,8 @@ impl Mesh2dPipelineKey {
     pub fn color_target_format(&self) -> TextureFormat {
         let code = ((self.bits() >> Self::COLOR_TARGET_FORMAT_SHIFT_BITS)
             & Self::COLOR_TARGET_FORMAT_MASK_BITS) as u8;
-        color_target_format_from_code(code).unwrap_or(TextureFormat::Rgba8UnormSrgb)
+        color_target_format_from_code(code)
+            .expect("Unknown bits in `COLOR_TARGET_FORMAT_MASK_BITS` of the pipeline key")
     }
 
     pub fn msaa_samples(&self) -> u32 {
