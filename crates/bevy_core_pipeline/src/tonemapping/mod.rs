@@ -118,6 +118,7 @@ pub struct TonemappingPipeline {
 #[reflect(Component, Debug, Hash, Default, PartialEq)]
 pub enum Tonemapping {
     /// Bypass tonemapping.
+    #[default]
     None,
     /// Suffers from lots hue shifting, brights don't desaturate naturally.
     /// Bright primaries and secondaries don't desaturate at all.
@@ -142,7 +143,6 @@ pub enum Tonemapping {
     /// Designed as a compromise if you want e.g. decent skin tones in low light, but can't afford to re-do your
     /// VFX to look good without hue shifting.
     SomewhatBoringDisplayTransform,
-    /// Current Bevy default.
     /// By Tomasz Stachowiak
     /// <https://github.com/h3r2tic/tony-mc-mapface>
     /// Very neutral. Subtle but intentional hue shifting. Brights desaturate across the spectrum.
@@ -154,7 +154,6 @@ pub enum Tonemapping {
     /// Color hues are preserved during compression, except for a deliberate [Bezold–Brücke shift](https://en.wikipedia.org/wiki/Bezold%E2%80%93Br%C3%BCcke_shift).
     /// To avoid posterization, selective desaturation is employed, with care to avoid the [Abney effect](https://en.wikipedia.org/wiki/Abney_effect).
     /// NOTE: Requires the `tonemapping_luts` cargo feature.
-    #[default]
     TonyMcMapface,
     /// Default Filmic Display Transform from blender.
     /// Somewhat neutral. Suffers from hue shifting. Brights desaturate across the spectrum.
@@ -189,6 +188,7 @@ pub struct TonemappingPipelineKey {
     deband_dither: DebandDither,
     tonemapping: Tonemapping,
     flags: TonemappingPipelineKeyFlags,
+    texture_format: TextureFormat,
 }
 
 impl SpecializedRenderPipeline for TonemappingPipeline {
@@ -273,7 +273,7 @@ impl SpecializedRenderPipeline for TonemappingPipeline {
                 shader: self.fragment_shader.clone(),
                 shader_defs,
                 targets: vec![Some(ColorTargetState {
-                    format: ViewTarget::TEXTURE_FORMAT_HDR,
+                    format: key.texture_format,
                     blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
@@ -354,6 +354,7 @@ pub fn prepare_view_tonemapping_pipelines(
         );
 
         let key = TonemappingPipelineKey {
+            texture_format: view.texture_format,
             deband_dither: *dither.unwrap_or(&DebandDither::Disabled),
             tonemapping: *tonemapping.unwrap_or(&Tonemapping::None),
             flags,
